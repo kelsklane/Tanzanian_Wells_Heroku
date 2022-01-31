@@ -1,5 +1,9 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import matplotlib as mpl
+import plotly.figure_factory as ff
 import pickle
 import string
 import streamlit as st
@@ -23,20 +27,95 @@ page = st.sidebar.selectbox("Choose a page:", ["Data Visualization", "Well Predi
 if page == 'Data Visualization':
     st.title("Tanzanian Well Data Visualizations")
     #Load the data
+    df_feat = pd.read_csv('data/Pump_it_Up_Data_Mining_the_Water_Table_-_Training_set_values.csv')
+    df_targ = pd.read_csv('data/Pump_it_Up_Data_Mining_the_Water_Table_-_Training_set_labels.csv')
+    df = pd.concat([df_feat, df_targ], axis = 1)
+    df_trim = df.drop(columns = ['id', 'extraction_type', 'extraction_type_group', 'scheme_name',
+                            'payment', 'quality_group', 'quantity_group', 'source_type', 'waterpoint_type_group',
+                            'region_code', 'district_code', 'ward', 'subvillage', 'lga', 'num_private',
+                            'recorded_by', 'funder', 'public_meeting', 'wpt_name'], axis = 1)
+    df_trim = df_trim[df_trim['longitude'] != 0]
+    df_trim['permit'] = df_trim['permit'].fillna(value = False)
+    def decades(year):
+        if year == 0:
+            return 'Unknown'
+        else:
+            return str((year // 10) * 10)
+    df_trim['construction_year'] = df_trim['construction_year'].apply(decades)
+
+    df_trim['month'] = pd.DatetimeIndex(df_trim['date_recorded']).month
+    season = {1: 'Winter', 2: 'Winter', 3: 'Spring', 4: 'Spring', 5: 'Spring', 6: 'Summer', 7: 'Summer', 
+            8: 'Summer', 9: 'Fall', 10: 'Fall', 11: 'Fall', 12: 'Winter'}
+    df_trim['season'] = df_trim['month'].map(season)
+    df_trim = df_trim.drop(columns = ['month', 'date_recorded'], axis = 1)
+    df_trim.status_group = df_trim.status_group.map({'functional' : 0, 'non functional': 1, 'functional needs repair': 1})
+    #Bin installer column on training frequency
+    def install_bin(entry):
+        #Bins nulls as other
+        if type(entry) == float:
+            return 'other'
+        #Checks lowercase to account for mistyped entries
+        elif entry.lower() in inst_list:
+            return entry.lower()
+        else:
+            return 'other'
+
+    #Bin scheme_management based on training frequency
+    def scheme_bin(entry):
+        if type(entry) == float:
+            return 'other'
+        elif entry.lower() in scheme_list:
+            return entry.lower()
+        else:
+            return 'other'
+
+    #Bin and fill in nulls in installer
+    inst_five = df_trim.installer.value_counts(sort = True, ascending = False)[:5]
+    inst_list = list(inst_five.index)
+    for idx, value in enumerate(inst_list):
+        inst_list[idx] = value.lower()
+    df_trim['installer'] = df_trim['installer'].apply(install_bin)
+        
+    #Bin and fill in nulls in scheme_management
+    scheme_eight = df_trim.scheme_management.value_counts(sort = True, ascending = False)[:9]
+    scheme_list = list(scheme_eight.index)
+    for idx, value in enumerate(scheme_list):
+        scheme_list[idx] = value.lower() 
+    df_trim['scheme_management'] = df_trim['scheme_management'].apply(scheme_bin)
+    
+    st.dataframe(df_trim)
 
     #Functionality bar chart
+    st.markdown('Background about the project. Below is a graph of the initial distribution of the target in the data used to train the model to get a sense of the status of Tanzanian wells.')
+    fig, ax = plt.subplots()
+    sns.set_style("ticks")
+    sns.barplot(x = ['Functional', 'Non-functional'], y = np.bincount(df_trim.status_group), color = '#0072b2')
+    ax.set_title('Number of Functional and Non-functional Wells in the Given Data')
+    ax.yaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
+    ax.set_ylabel('Number of Wells')
+    ax.set_xlabel('Well Status')
+    ax.bar_label(ax.containers[0])
+    st.pyplot(fig)
     #6 in 10 get drinking water from clean source
     #Map of wells w/ altitude as darkness of dot
     #Histogram of tsh_amount
+
+    # st.markdown('Describe what amount_tsh is and how it would impact well performance')
+    # tsh_data = list(df_trim.amount_tsh)
+    # hist_data = [tsh_data]
+    # group_labels = ['amount_tsh']
+    # fig2 = ff.create_distplot(hist_data, group_labels, bin_size = 10)
+    # st.plotly_chart(fig2, use_container_width=True)
+    
     #Bar chart for permit/installer/extraction type
     #Change in functionality over time
 
 
 
 elif page == 'Well Prediction':
+    st.image('Images/well_2.jpeg')
     st.title("Well Status Prediction")
     st.subheader('Test different well parameter combinations to predict if the well would be functioning or not!')
-    st.image('Images/unnamed.jpg')
     form = st.form(key = "text_form")
     tsh = form.slider("Choose a total static head amount: ", min_value=0.0, max_value=30.0, value=15.0, step=.01)
     permit = form.radio('Does the well have a permit?', options = ['True', 'False'])
