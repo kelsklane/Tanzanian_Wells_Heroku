@@ -82,11 +82,11 @@ if page == 'Data Visualization':
     for idx, value in enumerate(scheme_list):
         scheme_list[idx] = value.lower() 
     df_trim['scheme_management'] = df_trim['scheme_management'].apply(scheme_bin)
-    
-    st.dataframe(df_trim)
 
     #Functionality bar chart
-    st.markdown('Background about the project. Below is a graph of the initial distribution of the target in the data used to train the model to get a sense of the status of Tanzanian wells.')
+    st.markdown('Background about the project.')
+    st.image('Images/6in10.png')
+    st.markdown('Get a sense of what the data worked with like see target distribution below.')
     fig, ax = plt.subplots()
     sns.set_style("ticks")
     sns.barplot(x = ['Functional', 'Non-functional'], y = np.bincount(df_trim.status_group), color = '#0072b2')
@@ -96,8 +96,10 @@ if page == 'Data Visualization':
     ax.set_xlabel('Well Status')
     ax.bar_label(ax.containers[0])
     st.pyplot(fig)
-    #6 in 10 get drinking water from clean source
     #Map of wells w/ altitude as darkness of dot
+
+    #MENTION TIME - MOST DATA COLLECTED 2011-2013 w/ 1 from 2002 and 30 from 2004
+
     #Histogram of tsh_amount
 
     # st.markdown('Describe what amount_tsh is and how it would impact well performance')
@@ -108,7 +110,45 @@ if page == 'Data Visualization':
     # st.plotly_chart(fig2, use_container_width=True)
     
     #Bar chart for permit/installer/extraction type
-    #Change in functionality over time
+    #Permit
+    st.markdown('Background about the project. Below is a graph of the initial distribution of the target in the data used to train the model to get a sense of the status of Tanzanian wells.')
+    fig2, ax2 = plt.subplots()
+    sns.set_style("ticks")
+    sns.barplot(x = ['No Permit', 'Has Permit'], y = np.bincount(df_trim.permit), color = '#f07167', ax = ax2)
+    ax2.set_title('Distribution of Government Permits For Wells')
+    ax2.yaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
+    ax2.set_ylabel('Number of Permits')
+    ax2.set_xlabel('Permit Status')
+    ax2.bar_label(ax2.containers[0])
+    st.pyplot(fig2)
+    #Installer
+    st.markdown('Talk about installers')
+    inst = df_trim.installer.value_counts(ascending = False)
+    index = inst.index
+    values = inst.values
+    fig3, ax3 = plt.subplots()
+    sns.set_style("ticks")
+    sns.barplot(x = index, y = values, color = '#0072b2', ax = ax3)
+    ax3.set_title('Distribution of Well Installers')
+    ax3.yaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
+    ax3.set_ylabel('Quantity of Wells Installed')
+    ax3.set_xlabel('Installer')
+    ax3.bar_label(ax3.containers[0])
+    st.pyplot(fig3)
+    #Extraction
+    st.markdown('Talk about well extractions')
+    ext = df_trim.extraction_type_class.value_counts(ascending = False)
+    index = ext.index
+    values = ext.values
+    fig4, ax4 = plt.subplots(figsize = (12, 8))
+    sns.set_style("ticks")
+    sns.barplot(x = index, y = values, color = '#f07167', ax = ax4)
+    ax4.set_title('Distribution of Well Extraction Types')
+    ax4.yaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
+    ax4.set_ylabel('Quantity of Each Extraction')
+    ax4.set_xlabel('Extraction Type')
+    ax4.bar_label(ax4.containers[0])
+    st.pyplot(fig4)
 
 
 
