@@ -3,7 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib as mpl
-import plotly.figure_factory as ff
+import folium
+from folium.plugins import HeatMap
+from streamlit_folium import folium_static
 import pickle
 import string
 import streamlit as st
@@ -83,10 +85,12 @@ if page == 'Data Visualization':
         scheme_list[idx] = value.lower() 
     df_trim['scheme_management'] = df_trim['scheme_management'].apply(scheme_bin)
 
+
+
     #Functionality bar chart
-    st.markdown('Background about the project.')
+    st.markdown('This project was done to aid a fictional NGO in helping Tanzania accomplish its\' Millenium Development Goal of halving the proportion of the population without sustainable access to safe drinking water. At the time of the data being recorded, only 60% of Tanzanians could get their drinking water from an improved source. On top of that as of 2014, 33,200 rural water points were found to be non-functional with the likelihood of failure at 20% during these wells first year of operation. Therefore, access to working wells that deliver clean water is of high importance to Tanzania.')
     st.image('Images/6in10.png')
-    st.markdown('Get a sense of what the data worked with like see target distribution below.')
+    st.markdown('46% of the wells in Tanzania are in need of repair or nonfunctioning. Instead of building new wells, this NGO can drastically increase clean water supply by fixing these broken wells. Given an NGO\'s financial constraints, sending a repair team out to a fully-functional well would be expensive and cost the opportunity of fixing an actual non-functioning well. This problem may be exacerbated since some of these wells are very remote and in mountainous regions. By using our model that reached a precision of 76%, the NGO can preemptively address probable pump failures, increasing the sustainable, improved well capacity of Tanzania.')
     fig, ax = plt.subplots()
     sns.set_style("ticks")
     sns.barplot(x = ['Functional', 'Non-functional'], y = np.bincount(df_trim.status_group), color = '#0072b2')
@@ -97,24 +101,33 @@ if page == 'Data Visualization':
     ax.bar_label(ax.containers[0])
     st.pyplot(fig)
     #Map of wells w/ altitude as darkness of dot
-
-    #MENTION TIME - MOST DATA COLLECTED 2011-2013 w/ 1 from 2002 and 30 from 2004
+    st.markdown('To get a sense of the data, most of it was collected between 2011 - 2013, with one record dating from 2002 and 30 from 2004. The map below shows the spread of wells across Tanzania, where the blank spots with no wells are in sparsely populated areas in the desert.')
+    map_data = df_trim[['longitude', 'latitude']]
+    tanz_map = folium.Map(location=[map_data.latitude.mean(), 
+                           map_data.longitude.mean()], zoom_start=6, control_scale=True,
+                     tiles = "Stamen Terrain")
+    heat_data = [[row['latitude'],row['longitude']] for index, row in map_data.iterrows()]
+    HeatMap(heat_data).add_to(tanz_map)
+    folium_static(tanz_map)
 
     #Histogram of tsh_amount
-
-    # st.markdown('Describe what amount_tsh is and how it would impact well performance')
-    # tsh_data = list(df_trim.amount_tsh)
-    # hist_data = [tsh_data]
-    # group_labels = ['amount_tsh']
-    # fig2 = ff.create_distplot(hist_data, group_labels, bin_size = 10)
-    # st.plotly_chart(fig2, use_container_width=True)
+    st.markdown('One of the variables we found to be significant in predicting well status is `amount_tsh` or the total static head in the well. This measure represents the distance the water would have to travel to be pumped out of the well and thus is a metric used to gauge a pump\'s ability to pump water. The distribution of this variable in the given data is displayed below.')
+    atsh = df_trim[df_trim.amount_tsh < 30]
+    fig6, ax6 = plt.subplots()
+    sns.set_style("ticks")
+    sns.histplot(data = atsh, x = 'amount_tsh', kde = True, ax = ax6)
+    ax6.set_title('Distribution of Total Static Head Amounts')
+    ax6.yaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
+    ax6.set_ylabel('Number of Wells')
+    ax6.set_xlabel('Amount of Total Static Head')
+    st.pyplot(fig6)
     
     #Bar chart for permit/installer/extraction type
     #Permit
-    st.markdown('Background about the project. Below is a graph of the initial distribution of the target in the data used to train the model to get a sense of the status of Tanzanian wells.')
+    st.markdown('Another significant variable in predicting a well\'s status is if it had recieved a permit from the government. Some of the wells were built without government approval and these tended to have a higher rate of failure. The distribution of this variable in the training data is graphed below as well.')
     fig2, ax2 = plt.subplots()
     sns.set_style("ticks")
-    sns.barplot(x = ['No Permit', 'Has Permit'], y = np.bincount(df_trim.permit), color = '#f07167', ax = ax2)
+    sns.barplot(x = ['No Permit', 'Has Permit'], y = np.bincount(df_trim.permit), color = '#FFAC1C', ax = ax2)
     ax2.set_title('Distribution of Government Permits For Wells')
     ax2.yaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
     ax2.set_ylabel('Number of Permits')
@@ -122,7 +135,7 @@ if page == 'Data Visualization':
     ax2.bar_label(ax2.containers[0])
     st.pyplot(fig2)
     #Installer
-    st.markdown('Talk about installers')
+    st.markdown('The group that installed the well is another significant factor in the model for predicting the well\'s status. These installers include the District Water Engineers (DWE), Regional Water Engineer\'s Office (RWE), Denmark\'s Development Cooperation (DANIDA), Commu, government-sponsored wells, as well as a collection of wells installed by either smaller groups or of unknown origin lumped under other.')
     inst = df_trim.installer.value_counts(ascending = False)
     index = inst.index
     values = inst.values
@@ -136,13 +149,13 @@ if page == 'Data Visualization':
     ax3.bar_label(ax3.containers[0])
     st.pyplot(fig3)
     #Extraction
-    st.markdown('Talk about well extractions')
+    st.markdown('The final significant variable is the method the well uses to extract the water from the ground. These include self-explanatory methods like gravity-operated wells, handpumps that require manual pumping, motorpumps, and rope-operated wells. Other extraction methods include wind-powered, where a wind turbine is used to generate the energy needed to pull up the water, and submersible pumps, where a submerged pumping unit is used to draw up water. Finally, any unknown or uncommon well extraction types are lumped together under the other category.')
     ext = df_trim.extraction_type_class.value_counts(ascending = False)
     index = ext.index
     values = ext.values
     fig4, ax4 = plt.subplots(figsize = (12, 8))
     sns.set_style("ticks")
-    sns.barplot(x = index, y = values, color = '#f07167', ax = ax4)
+    sns.barplot(x = index, y = values, color = '#FFAC1C', ax = ax4)
     ax4.set_title('Distribution of Well Extraction Types')
     ax4.yaxis.set_major_formatter(mpl.ticker.StrMethodFormatter('{x:,.0f}'))
     ax4.set_ylabel('Quantity of Each Extraction')
@@ -157,7 +170,7 @@ elif page == 'Well Prediction':
     st.title("Well Status Prediction")
     st.subheader('Test different well parameter combinations to predict if the well would be functioning or not!')
     form = st.form(key = "text_form")
-    tsh = form.slider("Choose a total static head amount: ", min_value=0.0, max_value=30.0, value=15.0, step=.01)
+    tsh = form.slider("Choose a total static head amount: ", min_value=0.0, max_value = 30.0, value=15.0, step=.01)
     permit = form.radio('Does the well have a permit?', options = ['True', 'False'])
     installer = form.selectbox('Who was the installer for the well?', options = ['other', 'dwe', 'government', 'rwe', 'danida', 'commu'])
     extract = form.selectbox('What was the extraction type used for the well?', options = ['gravity', 'handpump', 'other', 'submersible', 'motorpump', 'rope pump', 'wind-powered'])
